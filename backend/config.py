@@ -34,4 +34,6 @@ TTS_RATE = 170
 TTS_VOLUME = 1.0
 
 # 前端跨域配置
-ALLOWED_ORIGINS = ["*"]
+# ⚠️ 安全警告：请在生产环境中将 ALLOWED_ORIGINS 设置为受信任的前端域名列表，切勿使用 ["*"]！
+# 例如：ALLOWED_ORIGINS = ["https://your-frontend-domain.com"]
+ALLOWED_ORIGINS = ["https://your-frontend-domain.com"]  # TODO: 替换为实际受信任的域名
