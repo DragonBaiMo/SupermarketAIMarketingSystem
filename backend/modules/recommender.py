@@ -1,5 +1,5 @@
 """客户推荐模块。"""
-from typing import Dict, List
+from typing import Dict
 
 import pandas as pd
 
