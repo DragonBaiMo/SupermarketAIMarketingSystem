@@ -33,7 +33,9 @@ LOG_FILE = os.path.join(OUTPUT_DIR, "system.log")
 TTS_RATE = 170
 TTS_VOLUME = 1.0
 
-# 前端跨域配置
-# ⚠️ 安全警告：请在生产环境中将 ALLOWED_ORIGINS 设置为受信任的前端域名列表，切勿使用 ["*"]！
-# 例如：ALLOWED_ORIGINS = ["https://your-frontend-domain.com"]
-ALLOWED_ORIGINS = ["https://your-frontend-domain.com"]  # TODO: 替换为实际受信任的域名
+# 前端跨域配置（本地调试与部署时务必限制来源域名）
+# 生产环境请改为实际受信任的前端域名列表，避免使用 ["*"] 造成安全风险。
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]  # TODO: 部署时替换为正式前端域名

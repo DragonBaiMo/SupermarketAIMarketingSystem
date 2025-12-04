@@ -96,7 +96,7 @@ def recommend(req: RecommendRequest) -> Dict[str, List[Dict[str, Any]]]:
 
 
 @app.post("/api/promotion")
-def promotion_candidates(rule: PromotionRule) -> Dict[str, List[Dict[str, Any]]]:
+def promotion_candidates(rule: PromotionRule) -> Dict[str, Any]:
     """促销候选筛选。"""
     _ensure_data_loaded()
     metrics = promotion.calc_product_metrics(data_repo)

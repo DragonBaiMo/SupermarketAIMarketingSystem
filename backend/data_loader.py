@@ -54,10 +54,13 @@ class DataRepository:
         rename_map: Dict[str, str] = {
             "Order ID": "order_id",
             "OrderID": "order_id",
+            "订单 ID": "order_id",
             "订单编号": "order_id",
             "Customer ID": "customer_id",
+            "客户 ID": "customer_id",
             "客户编号": "customer_id",
             "Product ID": "product_id",
+            "产品 ID": "product_id",
             "产品编号": "product_id",
             "Quantity": "quantity",
             "数量": "quantity",

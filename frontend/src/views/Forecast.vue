@@ -1,22 +1,63 @@
 <template>
-  <div class="section-card">
-    <h2>销售额与利润预测</h2>
-    <div class="form-row">
-      <label>预测月份数</label>
-      <input type="number" min="1" max="12" v-model.number="months" />
-      <button class="primary" @click="run">开始预测</button>
-      <button class="secondary" @click="exportData">导出预测CSV</button>
-    </div>
-    <p style="color: #9ca3af">默认按月聚合，使用线性回归生成趋势预测。</p>
-  </div>
+  <div class="page-container">
+    <header class="page-header">
+      <div class="header-content">
+        <h2 class="title">趋势预测 <span class="subtitle">AI 线性回归模型</span></h2>
+        <p class="desc">基于历史销售数据的时序分析，智能推演未来营收趋势。</p>
+      </div>
+      
+      <div class="control-bar">
+        <div class="input-group">
+          <label class="label">预测周期 (月)</label>
+          <div class="input-wrapper">
+            <input type="number" min="1" max="24" v-model.number="months" class="clean-input" />
+            <span class="suffix">个月</span>
+          </div>
+        </div>
+        <button class="primary" @click="run" :disabled="loading">
+          {{ loading ? '计算模型中...' : '生成预测报告' }}
+        </button>
+      </div>
+    </header>
 
-  <div class="section-card" v-if="chartData.length">
-    <h3>趋势图</h3>
-    <div ref="chartRef" class="chart-box"></div>
-  </div>
-  <div class="section-card" v-if="summary">
-    <h3>预测摘要</h3>
-    <p>{{ summary }}</p>
+    <div class="forecast-content">
+      <!-- 图表区域 -->
+      <div class="chart-viz-panel" :class="{ 'has-data': chartData.length }">
+        <div class="viz-header" v-if="chartData.length">
+          <div class="legend-group">
+            <div class="legend-item"><span class="dot solid"></span>历史数据</div>
+            <div class="legend-item"><span class="dot dashed"></span>AI 预测</div>
+          </div>
+        </div>
+        
+        <div ref="chartRef" class="chart-canvas"></div>
+        
+        <!-- Loading 遮罩 -->
+        <div v-if="loading" class="overlay-mask">
+          <div class="spinner large"></div>
+          <span class="loading-text">正在分析时序模式...</span>
+        </div>
+
+        <!-- 空状态提示 -->
+        <div v-if="!chartData.length && !loading" class="empty-hint">
+          <div class="hint-icon">📈</div>
+          <p>设置预测时长并开始生成</p>
+        </div>
+      </div>
+
+      <!-- 智能分析卡片 -->
+      <Transition name="slide-up">
+        <div class="insight-card" v-if="summary">
+          <div class="insight-header">
+            <span class="icon">✨</span>
+            <span class="insight-title">AI 智能分析摘要</span>
+          </div>
+          <div class="insight-body">
+            <p>{{ summary }}</p>
+          </div>
+        </div>
+      </Transition>
+    </div>
   </div>
 </template>
 
@@ -36,48 +77,98 @@ const chartRef = ref<HTMLDivElement | null>(null);
 const chartData = ref<SeriesPoint[]>([]);
 const forecastData = ref<SeriesPoint[]>([]);
 const summary = ref("");
+const loading = ref(false);
 let chart: echarts.ECharts | null = null;
 
-const renderChart = () => {
+const initChart = () => {
   if (!chartRef.value) return;
-  if (!chart) {
-    chart = echarts.init(chartRef.value);
-  }
+  chart = echarts.init(chartRef.value);
+  window.addEventListener('resize', () => chart?.resize());
+};
+
+const renderChart = () => {
+  if (!chart) initChart();
+  if (!chart) return;
+
   const historyPeriods = chartData.value.map((item) => item.period);
   const forecastPeriods = forecastData.value.map((item) => item.period);
-  chart.setOption({
-    tooltip: { trigger: "axis" },
-    legend: { data: ["历史销售", "历史利润", "预测销售", "预测利润"] },
-    xAxis: { type: "category", data: [...historyPeriods, ...forecastPeriods] },
-    yAxis: { type: "value" },
+  const allPeriods = [...historyPeriods, ...forecastPeriods];
+  
+  const salesHistory = chartData.value.map(i => i.sales);
+  const salesForecast = new Array(salesHistory.length).fill(null).concat(forecastData.value.map(i => i.sales));
+
+  const profitHistory = chartData.value.map(i => i.profit);
+  const profitForecast = new Array(profitHistory.length).fill(null).concat(forecastData.value.map(i => i.profit));
+
+  const option: echarts.EChartsOption = {
+    backgroundColor: 'transparent',
+    grid: { top: 40, right: 40, bottom: 40, left: 60, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#E2E8F0',
+      textStyle: { color: '#333' },
+      axisPointer: { type: 'cross', label: { backgroundColor: '#64748B' } },
+      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1);'
+    },
+    xAxis: {
+      type: 'category',
+      data: allPeriods,
+      axisLine: { lineStyle: { color: '#CBD5E1' } },
+      axisLabel: { color: '#64748B', fontFamily: 'Inter' }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { type: 'dashed', color: '#E2E8F0' } },
+      axisLabel: { color: '#64748B' }
+    },
     series: [
       {
-        name: "历史销售",
-        type: "line",
-        data: chartData.value.map((i) => i.sales)
+        name: '历史销量',
+        type: 'line',
+        data: salesHistory,
+        itemStyle: { color: '#2563EB' }, // Brand Blue
+        symbol: 'none',
+        smooth: true,
+        lineStyle: { width: 3 }
       },
       {
-        name: "历史利润",
-        type: "line",
-        data: chartData.value.map((i) => i.profit)
+        name: '历史利润',
+        type: 'line',
+        data: profitHistory,
+        itemStyle: { color: '#059669' }, // Emerald
+        symbol: 'none',
+        smooth: true,
+        lineStyle: { width: 3 }
       },
       {
-        name: "预测销售",
-        type: "line",
-        data: new Array(chartData.value.length).fill(null).concat(forecastData.value.map((i) => i.sales)),
-        lineStyle: { type: "dashed" }
+        name: '预测销量',
+        type: 'line',
+        data: salesForecast,
+        itemStyle: { color: '#2563EB' },
+        lineStyle: { type: 'dashed', width: 2 },
+        symbol: 'circle',
+        symbolSize: 8,
+        itemStyle: { borderWidth: 2, borderColor: '#2563EB', color: '#fff' } // 空心点
       },
       {
-        name: "预测利润",
-        type: "line",
-        data: new Array(chartData.value.length).fill(null).concat(forecastData.value.map((i) => i.profit)),
-        lineStyle: { type: "dashed" }
+        name: '预测利润',
+        type: 'line',
+        data: profitForecast,
+        itemStyle: { color: '#059669' },
+        lineStyle: { type: 'dashed', width: 2 },
+        symbol: 'circle',
+        symbolSize: 8,
+        itemStyle: { borderWidth: 2, borderColor: '#059669', color: '#fff' }
       }
     ]
-  });
+  };
+
+  chart.setOption(option);
 };
 
 const run = async () => {
+  loading.value = true;
   try {
     const resp = await http.post("/forecast", { months: months.value });
     chartData.value = resp.data.history || [];
@@ -86,26 +177,137 @@ const run = async () => {
     await nextTick();
     renderChart();
   } catch (error: any) {
-    alert(error.message);
-  }
-};
-
-const exportData = async () => {
-  try {
-    const resp = await http.post(`/export`, { target: "forecast", months: months.value }, { responseType: "blob" });
-    const url = window.URL.createObjectURL(new Blob([resp.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "forecast.csv");
-    document.body.appendChild(link);
-    link.click();
-  } catch (error: any) {
-    alert(error.message);
+    console.error(error);
+  } finally {
+    loading.value = false;
   }
 };
 
 onBeforeUnmount(() => {
   chart?.dispose();
-  chart = null;
+  window.removeEventListener('resize', () => chart?.resize());
 });
 </script>
+
+<style scoped>
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+
+.title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.subtitle { font-weight: 400; color: var(--text-tertiary); font-size: 16px; margin-left: 8px; }
+.desc { color: var(--text-secondary); font-size: 14px; }
+
+.control-bar { display: flex; align-items: flex-end; gap: 24px; }
+
+.input-group .label { display: block; font-size: 12px; color: var(--text-tertiary); margin-bottom: 8px; font-weight: 600; }
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  height: 40px;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-xs);
+}
+.input-wrapper:focus-within { border-color: var(--brand-primary); box-shadow: 0 0 0 3px var(--brand-shadow); }
+
+.clean-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  width: 50px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 16px;
+  outline: none;
+  height: 100%;
+}
+.suffix { color: var(--text-tertiary); margin-left: 8px; font-size: 14px; }
+
+/* Chart Viz */
+.chart-viz-panel {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  height: 500px;
+  position: relative;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+}
+
+.viz-header {
+  padding: 16px 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.legend-group { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.dot { width: 12px; height: 3px; border-radius: 100px; background: var(--text-secondary); }
+.dot.solid { background: #2563EB; }
+.dot.dashed { background: repeating-linear-gradient(90deg, #2563EB, #2563EB 4px, transparent 4px, transparent 8px); width: 20px; height: 2px; }
+
+.chart-canvas { flex: 1; width: 100%; }
+
+/* Insight Card */
+.insight-card {
+  background: #F0F9FF; /* 极淡的蓝色背景 */
+  border: 1px solid #BAE6FD;
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.insight-title { font-size: 16px; font-weight: 600; color: #0369A1; }
+
+.insight-body { color: #334155; font-size: 14px; line-height: 1.8; }
+
+/* Overlay */
+.overlay-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  color: var(--brand-primary);
+}
+
+.spinner.large {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+  border-color: rgba(37, 99, 235, 0.2);
+  border-top-color: var(--brand-primary);
+}
+
+.empty-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+.hint-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; filter: grayscale(1); }
+</style>
