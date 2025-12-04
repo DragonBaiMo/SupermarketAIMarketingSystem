@@ -52,7 +52,7 @@ class Recommender:
         if not scores:
             return self._global_top_products(top_n)
         score_df = pd.DataFrame([{"product_id": pid, "score": score} for pid, score in scores.items()])
-        products = self.repo.products if self.repo.products is not None else pd.DataFrame()
+        products = self.repo.products if self.repo.products is not None else pd.DataFrame(columns=["product_id", "product_name"])
         merged = score_df.merge(products[["product_id", "product_name"]], on="product_id", how="left")
         merged["reason"] = "同购商品共现度高，适合推荐"
         merged = merged.sort_values(by="score", ascending=False).head(top_n)
