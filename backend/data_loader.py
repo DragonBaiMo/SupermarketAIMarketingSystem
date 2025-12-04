@@ -1,5 +1,4 @@
 """数据加载与清洗模块。"""
-import traceback
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -32,19 +31,19 @@ class DataRepository:
             LOGGER.error("未找到数据文件，请检查路径：%s", path)
             raise exc
         except PermissionError as exc:
-            LOGGER.error("无权限读取文件：%s\n%s", path, traceback.format_exc())
+            LOGGER.error("无权限读取文件：%s", path, exc_info=True)
             raise exc
         except pd.errors.EmptyDataError as exc:
-            LOGGER.error("CSV 文件为空：%s\n%s", path, traceback.format_exc())
+            LOGGER.error("CSV 文件为空：%s", path, exc_info=True)
             raise exc
         except pd.errors.ParserError as exc:
-            LOGGER.error("CSV 解析失败，文件格式可能不正确：%s\n%s", path, traceback.format_exc())
+            LOGGER.error("CSV 解析失败，文件格式可能不正确：%s", path, exc_info=True)
             raise exc
         except UnicodeDecodeError as exc:
-            LOGGER.error("CSV 文件编码错误，请确认文件编码：%s\n%s", path, traceback.format_exc())
+            LOGGER.error("CSV 文件编码错误，请确认文件编码：%s", path, exc_info=True)
             raise exc
         except ValueError as exc:
-            LOGGER.error("CSV 数据值异常：%s\n%s", path, traceback.format_exc())
+            LOGGER.error("CSV 数据值异常：%s", path, exc_info=True)
             raise exc
 
         df = self._normalize_columns(df)
