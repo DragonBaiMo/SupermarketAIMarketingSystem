@@ -1,5 +1,5 @@
 """FastAPI 请求与响应数据模型。"""
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,25 @@ class PromotionRule(BaseModel):
     max_quantity: float = Field(config.DEFAULT_PROMOTION_RULE["max_quantity"], description="最高销量")
     min_profit_rate: float = Field(config.DEFAULT_PROMOTION_RULE["min_profit_rate"], description="最低利润率")
     max_discount: float = Field(config.DEFAULT_PROMOTION_RULE["max_discount"], description="最高折扣")
+
+
+class PromotionAnalyzeRequest(BaseModel):
+    """关联规则挖掘参数。"""
+
+    min_support: float = Field(config.DEFAULT_MIN_SUPPORT, description="最小支持度")
+    min_confidence: float = Field(config.DEFAULT_MIN_CONFIDENCE, description="最小置信度")
+    metric: str = Field("lift", description="规则排序指标")
+
+
+class AssociationRule(BaseModel):
+    """用于返回前端的关联规则。"""
+
+    antecedents: List[str]
+    consequents: List[str]
+    support: float
+    confidence: float
+    lift: float
+    reason: str
 
 
 class RecommendRequest(BaseModel):
@@ -48,3 +67,10 @@ class ExportRequest(BaseModel):
     top_n: int = Field(config.DEFAULT_TOP_N, description="导出推荐的数量")
     months: int = Field(config.DEFAULT_FORECAST_MONTHS, description="预测导出的月份数")
     k: int = Field(config.DEFAULT_CLUSTER_K, description="聚类导出的群组数量")
+
+
+class MiniMaxTTSRequest(BaseModel):
+    """MiniMax 文本转语音请求。"""
+
+    text: str = Field(..., min_length=1, description="需要合成的中文文本")
+    voice_id: Optional[str] = Field(None, description="自定义发音人标识，不填使用默认值")
