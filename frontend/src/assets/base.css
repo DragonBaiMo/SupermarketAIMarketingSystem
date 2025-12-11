@@ -1,0 +1,233 @@
+/* =========================================
+   设计系统：光之境 (Luminous Realm)
+   核心理念：通透、秩序、触感
+   ========================================= */
+
+:root {
+  /* --- 调色板：清晨 (Morning) --- */
+  --bg-app: #F5F7FA;            /* 全局背景：淡云灰 */
+  --bg-surface: #FFFFFF;        /* 表面：纯白陶瓷 */
+  --bg-glass: rgba(255, 255, 255, 0.7); /* 毛玻璃基底 */
+  --bg-hover: #F0F2F5;          /* 悬停反馈 */
+
+  /* --- 文字系统：墨与灰 --- */
+  --text-primary: #1A1D21;      /* 标题：深邃墨黑 */
+  --text-secondary: #5E6573;    /* 正文：岩石灰 */
+  --text-tertiary: #9AA0AC;     /* 辅助：浅灰 */
+  --text-brand: #FFFFFF;        /* 品牌反白 */
+
+  /* --- 品牌色：极光 (Aurora) --- */
+  --brand-primary: #2563EB;     /* 核心蓝：克莱因蓝变体 */
+  --brand-gradient: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  --brand-shadow: rgba(37, 99, 235, 0.25);
+  
+  /* --- 功能色 --- */
+  --success-bg: #ECFDF5;
+  --success-text: #059669;
+  --warning-bg: #FFFBEB;
+  --warning-text: #D97706;
+  --error-bg: #FEF2F2;
+  --error-text: #DC2626;
+
+  /* --- 边框与分割 --- */
+  --border-light: rgba(0, 0, 0, 0.04); /* 极淡的分割线 */
+  --border-focus: rgba(37, 99, 235, 0.4);
+
+  /* --- 阴影系统 (弥散感) --- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 8px 16px -4px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  --shadow-float: 0 30px 60px -12px rgba(37, 99, 235, 0.15);
+
+  /* --- 间距与圆角 --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  
+  --space-xs: 8px;
+  --space-sm: 16px;
+  --space-md: 24px;
+  --space-lg: 32px;
+  --space-xl: 48px;
+
+  /* --- 动画物理参数 --- */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性 */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);      /* 丝滑 */
+}
+
+/* =========================================
+   全局重置
+   ========================================= */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: subpixel-antialiased; /* 强化文字清晰度 */
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  cursor: default; /* 恢复默认光标，特定区域自定义 */
+}
+
+/* 选中文本样式 */
+::selection {
+  background: var(--brand-primary);
+  color: white;
+}
+
+/* =========================================
+   核心组件微调
+   ========================================= */
+
+/* --- 按钮：果冻质感 --- */
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s var(--ease-smooth);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px; /* 加大点击区 */
+  padding: 0 20px;
+  font-size: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+button:active {
+  transform: scale(0.96); /* 点击下压感 */
+}
+
+/* 主按钮：渐变光泽 */
+button.primary {
+  background: var(--brand-gradient);
+  color: white;
+  box-shadow: 0 4px 12px var(--brand-shadow);
+}
+button.primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 16px var(--brand-shadow);
+  transform: translateY(-1px);
+}
+button.primary:active {
+  transform: scale(0.96) translateY(0);
+}
+
+/* 次级按钮：干净利落 */
+button.secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xs);
+}
+button.secondary:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: #F8FAFC;
+}
+
+button.small {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+/* --- 卡片：悬浮陶瓷 --- */
+.card-panel {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth);
+}
+.card-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* --- 输入框：呼吸感 --- */
+input, select {
+  height: 40px;
+  border: 1px solid #E5E7EB;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: all 0.2s;
+  width: 100%;
+  outline: none;
+}
+input:hover { border-color: #D1D5DB; }
+input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-shadow);
+}
+
+/* --- 表格：清爽杂志风 --- */
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* 固定布局防止跳动 */
+}
+.modern-table th {
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 16px 24px;
+  background: #FAFAFA;
+  border-bottom: 1px solid #F0F0F0;
+}
+.modern-table td {
+  padding: 16px 24px;
+  color: var(--text-primary);
+  border-bottom: 1px solid #F5F5F5;
+  font-size: 14px;
+  transition: background 0.1s;
+}
+.modern-table tr:last-child td { border-bottom: none; }
+.modern-table tr:hover td {
+  background: #F8FAFC;
+}
+
+/* --- 徽章与标签 --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+.badge.blue { background: #EFF6FF; color: #2563EB; }
+.badge.green { background: var(--success-bg); color: var(--success-text); }
+.badge.orange { background: var(--warning-bg); color: var(--warning-text); }
+
+/* --- 加载动画 --- */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 辅助类 */
+.font-mono { font-family: "JetBrains Mono", "SF Mono", Consolas, monospace; }
+.text-right { text-align: right; }
