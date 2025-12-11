@@ -8,11 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from backend import config
-from backend.api_models import (ClusterRequest, ExportRequest, ForecastRequest,
-                                LoadRequest, PromotionRule, RecommendRequest)
+from backend.api_models import (AssociationRule, ClusterRequest, ExportRequest,
+                                ForecastRequest, LoadRequest,
+                                MiniMaxTTSRequest, PromotionAnalyzeRequest,
+                                PromotionRule, RecommendRequest)
 from backend.data_loader import data_repo
 from backend.modules import clustering, forecast, promotion, recommender
-from backend.modules.tts import speak
+from backend.modules.tts import query_minimax_task, speak, submit_minimax_task
 from backend.utils.logger import LOGGER, ensure_dirs
 
 app = FastAPI(title="超市AI营销系统", description="提供营销分析 API，配合 Vue 前端使用")
@@ -104,17 +106,35 @@ def promotion_candidates(rule: PromotionRule) -> Dict[str, Any]:
     return {"items": result.to_dict(orient="records"), "total": int(len(result))}
 
 
+@app.post("/api/promotion/analyze")
+def promotion_analyze(req: PromotionAnalyzeRequest) -> Dict[str, Any]:
+    """使用 Apriori 进行购物篮关联分析。"""
+    _ensure_data_loaded()
+    try:
+        rules: List[AssociationRule] = promotion.mine_association_rules(
+            data_repo,
+            min_support=req.min_support,
+            min_confidence=req.min_confidence,
+            metric=req.metric,
+        )
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.error("关联规则挖掘失败：%s", exc)
+        raise HTTPException(status_code=400, detail="关联规则挖掘失败，请调整参数后重试") from exc
+    return {"items": [rule.dict() for rule in rules], "total": len(rules)}
+
+
 @app.post("/api/forecast")
 def forecast_sales(req: ForecastRequest) -> Dict[str, Any]:
     """销售额与利润预测。"""
     _ensure_data_loaded()
     ts_df = forecast.build_sales_timeseries(data_repo)
-    history, predict_df = forecast.train_and_predict_sales(ts_df, req.months)
-    summary = forecast.summarize_forecast(predict_df)
+    history, predict_df, model_info = forecast.train_and_predict_sales(ts_df, req.months)
+    summary = forecast.summarize_forecast(predict_df, model_info)
     return {
         "history": history.to_dict(orient="records"),
         "forecast": predict_df.to_dict(orient="records"),
         "summary": summary,
+        "model": model_info,
     }
 
 
@@ -149,7 +169,7 @@ def export_data(req: ExportRequest) -> StreamingResponse:
         df = cluster_df
     elif target == "forecast":
         ts_df = forecast.build_sales_timeseries(data_repo)
-        _, predict_df = forecast.train_and_predict_sales(ts_df, req.months)
+        _, predict_df, _ = forecast.train_and_predict_sales(ts_df, req.months)
         df = predict_df
     else:
         raise HTTPException(status_code=400, detail="不支持的导出类型")
@@ -175,3 +195,29 @@ def tts(text: str) -> Dict[str, str]:
         LOGGER.error("语音播报失败：%s", exc)
         raise HTTPException(status_code=500, detail="语音播报失败，请检查本地音频环境") from exc
     return {"message": "已开始播放"}
+
+
+@app.post("/api/tts/minimax")
+def minimax_tts(req: MiniMaxTTSRequest) -> Dict[str, str]:
+    """提交 MiniMax 文本转语音任务。"""
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="播报内容不能为空")
+    try:
+        result = submit_minimax_task(req.text, req.voice_id)
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.error("MiniMax 任务提交失败：%s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return result
+
+
+@app.get("/api/tts/minimax/status/{task_id}")
+def minimax_tts_status(task_id: str) -> Dict[str, str]:
+    """查询 MiniMax 语音合成状态。"""
+    if not task_id:
+        raise HTTPException(status_code=400, detail="task_id 不能为空")
+    try:
+        result = query_minimax_task(task_id)
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.error("查询 MiniMax 任务失败：%s", exc)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return result

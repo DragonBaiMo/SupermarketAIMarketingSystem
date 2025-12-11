@@ -51,18 +51,26 @@ npm run dev -- --host --port 5173
 - `GET /data/overview`：查看记录数、客户数、日期范围。
 - `POST /recommend`：输入客户 ID 与 TopN 获取推荐商品。
 - `POST /promotion`：按阈值筛选促销候选商品。
+- `POST /promotion/analyze`：基于 Apriori 的购物篮关联规则挖掘。
 - `POST /forecast`：按月预测未来销售额与利润。
 - `POST /clustering`：基于 RFM 的 KMeans 聚类与分群解释。
 - `POST /export`：导出推荐、促销、预测、分群的 CSV。
 - `POST /tts`：播报任意文本（本地音频环境需可用）。
+- `POST /tts/minimax` 与 `GET /tts/minimax/status/{task_id}`：调用 MiniMax 云端语音合成并轮询下载链接。
 
 ## 前端功能看板
 
 - **数据管理**：上传/加载 CSV，显示基础数据概览。
 - **客户推荐**：输入客户 ID，展示 TopN 推荐并支持 CSV 导出。
-- **促销分析**：配置销量、利润率、折扣阈值，筛选候选商品并导出。
-- **销售预测**：选择预测月份数，查看销售/利润折线图与摘要，支持导出。
+- **促销分析**：配置销量、利润率、折扣阈值，筛选候选商品并导出；可切换关联规则挖掘展示“啤酒+尿布”等组合建议，未命中规则时自动放宽阈值保障结果可见。
+- **销售预测**：选择预测月份数，查看销售/利润折线图与摘要，支持导出；自动对比 ARIMA 与线性回归，先用补齐后的时间序列做留出验证，再择优展示更能刻画周期性的结果。
 - **客户分群**：设置聚类数，查看分群柱状图与分群表，支持导出。
+- **语音播报**：既可本地播放，也可提交 MiniMax 任务后轮询获取云端高质量音频链接。
+
+## MiniMax 云端语音配置
+
+- 设置环境变量 `MINIMAX_API_KEY` 与 `MINIMAX_GROUP_ID`，可选的默认发音人 `MINIMAX_VOICE_ID`。
+- API 基地址默认为 `https://api.minimax.chat/v1`，后端接口会先提交任务再通过 `task_id` 查询状态与下载地址。
 
 ## 数据与持久化
 
