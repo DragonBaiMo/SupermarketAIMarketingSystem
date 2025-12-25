@@ -1,5 +1,6 @@
 """FastAPI 版后端入口，提供前后端分离接口。"""
 import os
+from contextlib import asynccontextmanager
 from io import StringIO
 from typing import Any, Dict, List
 
@@ -17,26 +18,43 @@ from backend.modules import clustering, forecast, promotion, recommender
 from backend.modules.tts import query_minimax_task, speak, submit_minimax_task
 from backend.utils.logger import LOGGER, ensure_dirs
 
-app = FastAPI(title="超市AI营销系统", description="提供营销分析 API，配合 Vue 前端使用")
+def _try_auto_load_default() -> bool:
+    """尝试自动加载默认 CSV，返回是否成功。"""
+    if data_repo.raw_df is not None:
+        return True
+    if not os.path.exists(config.DEFAULT_CSV):
+        return False
+    try:
+        data_repo.load_csv(config.DEFAULT_CSV)
+        LOGGER.info("已自动加载默认数据文件：%s", config.DEFAULT_CSV)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.warning("自动加载默认数据失败：%s", exc)
+        return False
+
+
+def _ensure_data_loaded() -> None:
+    """校验数据是否已加载。"""
+    if data_repo.raw_df is None and not _try_auto_load_default():
+        raise HTTPException(status_code=400, detail="请先在数据管理中上传或加载销售 CSV 文件")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> None:
+    """应用生命周期管理。"""
+    ensure_dirs()
+    os.makedirs(config.DATA_DIR, exist_ok=True)
+    _try_auto_load_default()
+    yield
+
+
+app = FastAPI(title="超市AI营销系统", description="提供营销分析 API，配合 Vue 前端使用", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def _ensure_data_loaded() -> None:
-    """校验数据是否已加载。"""
-    if data_repo.raw_df is None:
-        raise HTTPException(status_code=400, detail="请先在数据管理中上传或加载销售 CSV 文件")
-
-
-@app.on_event("startup")
-def _prepare_environment() -> None:
-    """启动时创建必要目录。"""
-    ensure_dirs()
-    os.makedirs(config.DATA_DIR, exist_ok=True)
 
 
 @app.get("/api/health")
@@ -130,11 +148,13 @@ def forecast_sales(req: ForecastRequest) -> Dict[str, Any]:
     ts_df = forecast.build_sales_timeseries(data_repo)
     history, predict_df, model_info = forecast.train_and_predict_sales(ts_df, req.months)
     summary = forecast.summarize_forecast(predict_df, model_info)
+    long_term = forecast.evaluate_long_horizon(history, 12)
     return {
         "history": history.to_dict(orient="records"),
         "forecast": predict_df.to_dict(orient="records"),
         "summary": summary,
         "model": model_info,
+        "long_term": long_term,
     }
 
 

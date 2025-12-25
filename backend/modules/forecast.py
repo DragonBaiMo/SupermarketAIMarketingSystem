@@ -70,6 +70,57 @@ def summarize_forecast(predict_df: pd.DataFrame, model_info: Dict[str, str]) -> 
     return summary
 
 
+def evaluate_long_horizon(history: pd.DataFrame, months: int = 12) -> Dict[str, object]:
+    """
+    使用较长留出期评估远期预测质量。
+
+    :param history: 含时间索引的历史数据。
+    :param months: 留出验证月份数。
+    :return: 远期验证结果字典。
+    """
+    if history.empty:
+        return {"available": False, "note": "历史数据为空，无法进行远期验证。", "test_months": months}
+    if len(history) <= months:
+        return {"available": False, "note": "历史期数不足以进行12个月留出验证。", "test_months": months}
+
+    test_size = months
+    train_df = history.iloc[:-test_size]
+    test_df = history.iloc[-test_size:]
+
+    lr_pred = _linear_regression_forecast(train_df, test_size)
+    lr_sales_mape, lr_profit_mape, lr_avg_mape = _calc_mape_pair(test_df, lr_pred)
+
+    arima_eval = _arima_forecast(train_df, test_size)
+    if arima_eval:
+        arima_pred = arima_eval["forecast"]
+        arima_sales_mape, arima_profit_mape, arima_avg_mape = _calc_mape_pair(test_df, arima_pred)
+    else:
+        arima_sales_mape = arima_profit_mape = arima_avg_mape = float("inf")
+
+    if arima_avg_mape < lr_avg_mape:
+        winner = "ARIMA"
+        sales_mape = arima_sales_mape
+        profit_mape = arima_profit_mape
+        avg_mape = arima_avg_mape
+    else:
+        winner = "线性回归"
+        sales_mape = lr_sales_mape
+        profit_mape = lr_profit_mape
+        avg_mape = lr_avg_mape
+
+    reliability = _judge_reliability(avg_mape)
+    return {
+        "available": True,
+        "test_months": test_size,
+        "winner": winner,
+        "sales_mape": sales_mape,
+        "profit_mape": profit_mape,
+        "avg_mape": avg_mape,
+        "reliability": reliability,
+        "note": "采用历史前期训练，后12个月留出验证。",
+    }
+
+
 def _linear_regression_forecast(history: pd.DataFrame, months: int) -> pd.DataFrame:
     """基于时间索引的线性回归预测。"""
     model_sales = LinearRegression()
@@ -156,15 +207,27 @@ def _evaluate_models(history: pd.DataFrame) -> Dict[str, str]:
     else:
         arima_mape = float("inf")
 
+    baseline_finite = np.isfinite(baseline_mape)
+    arima_finite = np.isfinite(arima_mape)
+    if not baseline_finite and not arima_finite:
+        return {
+            "winner": "线性回归",
+            "reason": "留出验证结果不可用，使用线性回归基线。",
+        }
+    if not arima_finite:
+        return {
+            "winner": "线性回归",
+            "reason": "ARIMA 未能收敛或样本不足，使用线性回归基线。",
+        }
+    if not baseline_finite:
+        return {
+            "winner": "ARIMA",
+            "reason": "线性回归留出验证失败，改用 ARIMA 模型。",
+        }
     if arima_mape < baseline_mape:
         return {
             "winner": "ARIMA",
             "reason": f"留出验证显示 ARIMA MAPE={arima_mape:.2%} 优于线性回归的 {baseline_mape:.2%}。",
-        }
-    if arima_mape == float("inf"):
-        return {
-            "winner": "线性回归",
-            "reason": "ARIMA 未能收敛或样本不足，使用线性回归基线。",
         }
     return {
         "winner": "线性回归",
@@ -176,5 +239,34 @@ def _mape(actual: pd.Series, predict: pd.Series) -> float:
     """计算平均绝对百分比误差，分母为最小 1e-6 以避免除零。"""
     if len(actual) != len(predict) or len(actual) == 0:
         return float("inf")
-    denominator = np.maximum(actual.abs(), 1e-6)
-    return float(np.mean(np.abs(actual - predict) / denominator))
+    actual_series = pd.to_numeric(actual, errors="coerce")
+    predict_series = pd.to_numeric(predict, errors="coerce")
+    mask = actual_series.notna() & predict_series.notna()
+    if mask.sum() == 0:
+        return float("inf")
+    actual_valid = actual_series[mask]
+    predict_valid = predict_series[mask]
+    denominator = np.maximum(actual_valid.abs(), 1e-6)
+    return float(np.mean(np.abs(actual_valid - predict_valid) / denominator))
+
+
+def _calc_mape_pair(actual_df: pd.DataFrame, pred_df: pd.DataFrame) -> Tuple[float, float, float]:
+    """计算销售与利润的 MAPE，并给出综合平均误差。"""
+    sales_mape = _mape(actual_df["sales"], pred_df["sales"])
+    profit_mape = _mape(actual_df["profit"], pred_df["profit"])
+    values = [val for val in [sales_mape, profit_mape] if np.isfinite(val)]
+    avg_mape = float(np.mean(values)) if values else float("inf")
+    return sales_mape, profit_mape, avg_mape
+
+
+def _judge_reliability(avg_mape: float) -> str:
+    """根据综合误差给出可读可靠度标签。"""
+    if not np.isfinite(avg_mape):
+        return "未知"
+    if avg_mape <= 0.1:
+        return "高"
+    if avg_mape <= 0.2:
+        return "中"
+    if avg_mape <= 0.3:
+        return "低"
+    return "很低"

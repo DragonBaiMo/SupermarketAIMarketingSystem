@@ -5,6 +5,32 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 
+# 加载项目根目录 .env 到环境变量（不覆盖已存在的同名变量）
+def _load_env_file() -> None:
+    env_path = os.path.join(PROJECT_DIR, ".env")
+    if not os.path.exists(env_path):
+        return
+    try:
+        with open(env_path, "r", encoding="utf-8") as file:
+            for raw_line in file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                if not key:
+                    continue
+                if value.startswith(("\"", "'")) and value.endswith(("\"", "'")):
+                    value = value[1:-1]
+                os.environ.setdefault(key, value)
+    except Exception:
+        # 忽略 .env 读取异常，避免阻断服务启动
+        return
+
+
+_load_env_file()
+
 # 数据与输出目录
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "outputs")
@@ -13,6 +39,7 @@ OUTPUT_DIR = os.path.join(PROJECT_DIR, "outputs")
 DEFAULT_CSV = os.path.join(DATA_DIR, "sales_data.csv")
 DEFAULT_EXPORT_DIR = os.path.join(OUTPUT_DIR, "exports")
 DEFAULT_FIGURE_DIR = os.path.join(OUTPUT_DIR, "figures")
+TTS_AUDIO_DIR = os.path.join(OUTPUT_DIR, "tts")
 
 # 分析默认参数
 DEFAULT_TOP_N = 5
@@ -34,9 +61,10 @@ LOG_FILE = os.path.join(OUTPUT_DIR, "system.log")
 # 语音播报
 TTS_RATE = 170
 TTS_VOLUME = 1.0
-MINIMAX_API_BASE = "https://api.minimax.chat/v1"
-MINIMAX_TTS_MODEL = "speech-01"
-MINIMAX_DEFAULT_VOICE = os.getenv("MINIMAX_VOICE_ID", "male-qn-qingse")
+MINIMAX_API_BASE = os.getenv("MINIMAX_API_BASE", "https://tts.aurastd.com/api/v1")
+# 留空时不传递模型参数，使用服务端默认模型，避免因模型名称变更导致请求失败
+MINIMAX_TTS_MODEL = os.getenv("MINIMAX_TTS_MODEL", "")
+MINIMAX_DEFAULT_VOICE = os.getenv("MINIMAX_VOICE_ID", "Chinese (Mandarin)_Warm_Girl")
 MINIMAX_GROUP_ID = os.getenv("MINIMAX_GROUP_ID", "")
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "")
 MINIMAX_POLL_INTERVAL = 2

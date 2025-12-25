@@ -110,6 +110,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import http from "../api/http";
+import { requestCloudSpeech } from "../api/tts";
 
 interface PromotionItem {
   product_id: string;
@@ -155,6 +156,12 @@ const run = async () => {
     const resp = await http.post("/promotion", rule.value);
     items.value = resp.data.items || [];
     total.value = resp.data.total || 0;
+    if (items.value.length) {
+      const firstName = items.value[0].product_name || items.value[0].product_id;
+      void requestCloudSpeech(`促销策略筛选完成，共筛选出${total.value}个候选商品，首个商品为${firstName}。`);
+    } else {
+      void requestCloudSpeech("促销策略筛选完成，未找到符合条件的商品。");
+    }
   } catch (error: any) {
     console.error(error);
   } finally {

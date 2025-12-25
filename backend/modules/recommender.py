@@ -24,7 +24,8 @@ class Recommender:
         if self.repo.raw_df is None:
             raise ValueError("请先加载数据再进行推荐。")
         df = self.repo.raw_df
-        return df[df["customer_id"] == customer_id]
+        target = str(customer_id).strip()
+        return df[df["customer_id"].astype(str) == target]
 
     def recommend(self, customer_id: str, top_n: int = config.DEFAULT_TOP_N) -> pd.DataFrame:
         """
@@ -36,10 +37,12 @@ class Recommender:
         """
         if self.repo.raw_df is None:
             raise ValueError("请先加载数据再进行推荐。")
+        if not str(customer_id).strip():
+            raise ValueError("客户编号不能为空。")
         user_df = self.get_customer_history(customer_id)
         if user_df.empty:
-            LOGGER.warning("客户 %s 暂无历史订单，返回全局热销商品。", customer_id)
-            return self._global_top_products(top_n)
+            LOGGER.warning("客户 %s 暂无历史订单，拒绝返回随机推荐。", customer_id)
+            raise ValueError("未找到该客户历史订单，请输入有效客户编号。")
         co_matrix = self._build_co_occurrence()
         scores: Dict[str, float] = {}
         purchased = set(user_df["product_id"].unique())

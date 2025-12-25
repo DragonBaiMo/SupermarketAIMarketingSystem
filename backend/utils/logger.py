@@ -11,6 +11,7 @@ def ensure_dirs() -> None:
     os.makedirs(config.OUTPUT_DIR, exist_ok=True)
     os.makedirs(config.DEFAULT_EXPORT_DIR, exist_ok=True)
     os.makedirs(config.DEFAULT_FIGURE_DIR, exist_ok=True)
+    os.makedirs(config.TTS_AUDIO_DIR, exist_ok=True)
 
 
 def init_logger(level: str = config.LOG_LEVEL, log_file: Optional[str] = config.LOG_FILE) -> logging.Logger:

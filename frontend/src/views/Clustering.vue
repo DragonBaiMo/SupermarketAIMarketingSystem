@@ -90,6 +90,7 @@
 import * as echarts from "echarts";
 import { nextTick, onBeforeUnmount, ref } from "vue";
 import http from "../api/http";
+import { requestCloudSpeech } from "../api/tts";
 
 interface ClusterSummary {
   cluster: number;
@@ -164,6 +165,15 @@ const run = async () => {
     summary.value = resp.data.summary || [];
     await nextTick();
     renderChart();
+    if (summary.value.length) {
+      const labels = summary.value
+        .slice(0, 3)
+        .map((item) => item.label || "未定义")
+        .join("、");
+      void requestCloudSpeech(`客群透视完成，共${summary.value.length}个群组，主要标签包括${labels}。`);
+    } else {
+      void requestCloudSpeech("客群透视完成，但暂无可展示的分群结果。");
+    }
   } catch (error: any) {
     console.error(error);
   } finally {

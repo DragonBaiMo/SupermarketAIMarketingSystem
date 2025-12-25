@@ -30,6 +30,7 @@
           <span v-else class="spinner"></span>
         </button>
       </div>
+      <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
     </div>
 
     <div class="results-container" v-if="items.length">
@@ -91,6 +92,7 @@
 
 <script setup lang="ts">
 import http from "../api/http";
+import { requestCloudSpeech } from "../api/tts";
 import { ref } from "vue";
 
 interface RecommendItem {
@@ -104,15 +106,28 @@ const customerId = ref("");
 const topN = ref(5);
 const items = ref<RecommendItem[]>([]);
 const loading = ref(false);
+const errorMessage = ref("");
 
 const fetchRecommend = async () => {
-  if (!customerId.value) return;
+  if (!customerId.value) {
+    errorMessage.value = "请输入客户编号后再生成推荐。";
+    return;
+  }
   loading.value = true;
+  errorMessage.value = "";
   try {
     const resp = await http.post("/recommend", { customer_id: customerId.value, top_n: topN.value });
     items.value = resp.data.items || [];
+    if (items.value.length) {
+      const firstName = items.value[0].product_name || items.value[0].product_id;
+      void requestCloudSpeech(`精准营销推荐完成，共推荐${items.value.length}个商品，首推商品为${firstName}。`);
+    } else {
+      void requestCloudSpeech("精准营销推荐完成，但暂无可推荐商品。");
+    }
   } catch (error: any) {
     console.error(error); 
+    items.value = [];
+    errorMessage.value = error?.message || "推荐失败，请检查客户编号是否有效。";
   } finally {
     loading.value = false;
   }
@@ -153,6 +168,11 @@ const exportRecommend = async () => {
 .header-title .subtitle { font-size: 13px; color: var(--text-tertiary); }
 
 .search-row { display: flex; gap: 16px; align-items: center; }
+.error-text {
+  margin-top: 10px;
+  color: #DC2626;
+  font-size: 12px;
+}
 
 .search-input-group {
   position: relative;

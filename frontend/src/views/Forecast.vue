@@ -57,6 +57,47 @@
           </div>
         </div>
       </Transition>
+
+      <Transition name="fade">
+        <div class="model-card" v-if="modelInfo.model || modelInfo.reason">
+          <div class="model-row">
+            <span class="model-label">使用模型</span>
+            <span class="model-value">{{ modelInfo.model || '未知模型' }}</span>
+          </div>
+          <div class="model-row" v-if="modelInfo.reason">
+            <span class="model-label">模型说明</span>
+            <span class="model-value">{{ modelInfo.reason }}</span>
+          </div>
+        </div>
+      </Transition>
+
+      <Transition name="fade">
+        <div class="model-card" v-if="longTerm.available !== undefined">
+          <div class="model-row">
+            <span class="model-label">长期验证</span>
+            <span class="model-value">
+              <span v-if="longTerm.available">留出 {{ longTerm.test_months || 12 }} 个月，可靠度 {{ longTerm.reliability || '未知' }}</span>
+              <span v-else>{{ longTerm.note || '历史数据不足，无法验证长期预测。' }}</span>
+            </span>
+          </div>
+          <div class="model-row" v-if="longTerm.available">
+            <span class="model-label">验证模型</span>
+            <span class="model-value">{{ longTerm.winner || '未知模型' }}</span>
+          </div>
+          <div class="model-row" v-if="longTerm.available">
+            <span class="model-label">销售误差</span>
+            <span class="model-value">{{ formatPercent(longTerm.sales_mape) }}</span>
+          </div>
+          <div class="model-row" v-if="longTerm.available">
+            <span class="model-label">利润误差</span>
+            <span class="model-value">{{ formatPercent(longTerm.profit_mape) }}</span>
+          </div>
+          <div class="model-row" v-if="longTerm.available">
+            <span class="model-label">综合误差</span>
+            <span class="model-value">{{ formatPercent(longTerm.avg_mape) }}</span>
+          </div>
+        </div>
+      </Transition>
     </div>
   </div>
 </template>
@@ -65,6 +106,7 @@
 import * as echarts from "echarts";
 import { nextTick, onBeforeUnmount, ref } from "vue";
 import http from "../api/http";
+import { requestCloudSpeech } from "../api/tts";
 
 interface SeriesPoint {
   period: string;
@@ -77,6 +119,8 @@ const chartRef = ref<HTMLDivElement | null>(null);
 const chartData = ref<SeriesPoint[]>([]);
 const forecastData = ref<SeriesPoint[]>([]);
 const summary = ref("");
+const modelInfo = ref<{ model?: string; reason?: string }>({});
+const longTerm = ref<{ available?: boolean; test_months?: number; winner?: string; sales_mape?: number; profit_mape?: number; avg_mape?: number; reliability?: string; note?: string }>({});
 const loading = ref(false);
 let chart: echarts.ECharts | null = null;
 
@@ -167,6 +211,11 @@ const renderChart = () => {
   chart.setOption(option);
 };
 
+const formatPercent = (value?: number) => {
+  if (value === undefined || value === null || Number.isNaN(value)) return "未知";
+  return `${(value * 100).toFixed(2)}%`;
+};
+
 const run = async () => {
   loading.value = true;
   try {
@@ -174,8 +223,14 @@ const run = async () => {
     chartData.value = resp.data.history || [];
     forecastData.value = resp.data.forecast || [];
     summary.value = resp.data.summary || "";
+    modelInfo.value = resp.data.model || {};
+    longTerm.value = resp.data.long_term || {};
     await nextTick();
     renderChart();
+    const speech = summary.value
+      ? `趋势预测完成。${summary.value}`
+      : `趋势预测完成，已生成未来${months.value}个月的预测结果。`;
+    void requestCloudSpeech(speech);
   } catch (error: any) {
     console.error(error);
   } finally {
@@ -277,6 +332,33 @@ onBeforeUnmount(() => {
 .insight-title { font-size: 16px; font-weight: 600; color: #0369A1; }
 
 .insight-body { color: #334155; font-size: 14px; line-height: 1.8; }
+
+.model-card {
+  margin-top: 16px;
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+  padding: 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+.model-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.model-row:last-child { margin-bottom: 0; }
+.model-label {
+  width: 72px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+.model-value {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+}
 
 /* Overlay */
 .overlay-mask {
