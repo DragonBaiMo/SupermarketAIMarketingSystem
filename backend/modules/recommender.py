@@ -24,8 +24,8 @@ class Recommender:
         if self.repo.raw_df is None:
             raise ValueError("请先加载数据再进行推荐。")
         df = self.repo.raw_df
-        target = str(customer_id).strip()
-        return df[df["customer_id"].astype(str) == target]
+        customer_ids = self._resolve_customer_ids(customer_id)
+        return df[df["customer_id"].astype(str).isin(customer_ids)]
 
     def recommend(self, customer_id: str, top_n: int = config.DEFAULT_TOP_N) -> pd.DataFrame:
         """
@@ -37,8 +37,6 @@ class Recommender:
         """
         if self.repo.raw_df is None:
             raise ValueError("请先加载数据再进行推荐。")
-        if not str(customer_id).strip():
-            raise ValueError("客户编号不能为空。")
         user_df = self.get_customer_history(customer_id)
         if user_df.empty:
             LOGGER.warning("客户 %s 暂无历史订单，拒绝返回随机推荐。", customer_id)
@@ -60,6 +58,29 @@ class Recommender:
         merged["reason"] = "同购商品共现度高，适合推荐"
         merged = merged.sort_values(by="score", ascending=False).head(top_n)
         return merged
+
+    def _resolve_customer_ids(self, customer_input: str) -> list[str]:
+        """根据客户编号或客户名称解析对应的客户编号列表。"""
+        target = str(customer_input).strip()
+        if not target:
+            raise ValueError("客户编号不能为空。")
+        if self.repo.raw_df is None:
+            return []
+        df = self.repo.raw_df
+        id_series = df["customer_id"].astype(str).str.strip()
+        if (id_series == target).any():
+            return [target]
+        if "customer_name" in df.columns:
+            name_series = df["customer_name"].astype(str).str.strip()
+            matched_ids = df.loc[name_series == target, "customer_id"].astype(str).unique().tolist()
+            if len(matched_ids) == 1:
+                resolved = matched_ids[0]
+                LOGGER.info("客户名称 %s 解析为客户编号 %s。", target, resolved)
+                return [resolved]
+            if len(matched_ids) > 1:
+                id_list = "、".join(matched_ids[:10])
+                raise ValueError(f"客户名称匹配多个编号：{id_list}，请使用客户编号重试。")
+        raise ValueError("未找到该客户历史订单，请输入有效客户编号。")
 
     def _build_co_occurrence(self) -> Dict[str, Dict[str, float]]:
         """计算商品共现矩阵，用于共现推荐。"""

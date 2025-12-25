@@ -14,7 +14,7 @@
           </span>
           <input 
             v-model="customerId" 
-            placeholder="输入客户 ID (Enter确认)" 
+            placeholder="输入客户编号或姓名（回车确认）" 
             @keyup.enter="fetchRecommend"
             class="main-search-input"
           />
@@ -39,7 +39,7 @@
         <div class="user-info">
           <div class="avatar">{{ customerId.slice(0, 1).toUpperCase() }}</div>
           <div class="info-text">
-            <div class="u-id">Customer #{{ customerId }}</div>
+            <div class="u-id">客户编号 {{ customerId }}</div>
             <div class="u-tag">推荐算法: Item-CF</div>
           </div>
         </div>

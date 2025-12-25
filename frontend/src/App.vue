@@ -1,14 +1,14 @@
+<script setup lang="ts">
+import logo from './assets/logo.svg';
+</script>
+
 <template>
   <div class="app-layout">
     <!-- 磨砂玻璃侧边栏 -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo-box">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
-            <path d="M2 17L12 22L22 17"/>
-            <path d="M2 12L12 17L22 12"/>
-          </svg>
+          <img :src="logo" alt="Logo" class="app-logo" />
         </div>
         <h1 class="app-name">智擎<span class="thin">系统</span></h1>
       </div>
@@ -106,14 +106,23 @@
 }
 
 .logo-box {
-  width: 36px;
-  height: 36px;
-  background: var(--brand-gradient);
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px var(--brand-shadow);
+}
+
+.app-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+  transition: transform 0.3s ease;
+}
+
+.logo-box:hover .app-logo {
+  transform: scale(1.05);
 }
 
 .app-name {

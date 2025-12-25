@@ -59,6 +59,8 @@ class DataRepository:
             "Customer ID": "customer_id",
             "客户 ID": "customer_id",
             "客户编号": "customer_id",
+            "Customer Name": "customer_name",
+            "客户名称": "customer_name",
             "Product ID": "product_id",
             "产品 ID": "product_id",
             "产品编号": "product_id",
